@@ -27,7 +27,7 @@ directories.  Once you have done this you should be able to `package require` th
 
 There are a few optional "extras" commands which act as simple shortcut wrappers for 
 convenience.  They essentially just provide an alias to calling the `[task]` command 
-for specific use cases.  In all cases you can add them by calling `[package require extras::$package]`.
+for specific use cases.  In all cases you can add them by calling `[package require tasks::$package]`.
 
 These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyProc]`.
 
@@ -149,12 +149,16 @@ set tasks [task -info tasks]
 
 All of the commands below can also take the normal `[task]` arguments optionally. 
 All of these commands will operate together - you will still always have a single 
-set of tasks that are managed by `[task]`.
+set of tasks that are managed by `[task]`. 
+
+> As these are found in the "tasks" folder, we require it by providing the 
+> directory followed by "::" then the package name.  This is defined by the 
+> Tcl [tm](https://www.tcl.tk/man/tcl/TclCmd/tm.htm) packages instructions.
 
 #### **`every`** $interval_ms $cmd
 
 ```tcl
-package require extras::every
+package require tasks::every
 
 set every_id [every 5000 {puts hi}]
 
@@ -167,7 +171,7 @@ every cancel $every_id
 #### **`in`** $ms $cmd
 
 ```tcl
-package require extras::in
+package require tasks::in
 
 set in_id [in 5000 {puts hi}]
 
@@ -182,7 +186,7 @@ set in_id [in 5000 {puts hi}]
 #### **`at`** $time $cmd
 
 ```tcl
-package require extras::at
+package require tasks::at
 
 set at_id [at [expr { [clock milliseconds] + 5000 }] {puts hi}]
 
