@@ -184,12 +184,12 @@ proc myproc args {
 task -every 5000 -command myproc
 task -in 10000 -command myproc
 task -in 15000 -command myproc
-task -id my_task -every 5000 -times 5 -command myproc
+task -id my_task -every 2000 -times 5 -command myproc
 
 # Now we can run introspection commands
 
 set next [task -info next] 
-# task#1 1489896165159 {every 5000 cmd myproc}
+# my_task 1489896518265 {every 2000 times 5 cmd myproc}
 
 set ids  [task -info ids] 
 # task#1 task#2 task#3 my_task
@@ -199,9 +199,13 @@ set task [task -info task -id my_task]
 
 set tasks [task -info tasks]
 # task#1 {every 5000 cmd myproc} task#2 {cmd myproc} task#3 {cmd myproc} 
-# my_task {every 5000 times 5 cmd myproc}
+# my_task {every 2000 times 5 cmd myproc}
 
 ```
+
+> **Note:** The "times" key within the descriptor will be updated with how many 
+> executions are remaining so it might be difference depending on when it is 
+> called.
 
 ## Extras Examples
 
