@@ -189,7 +189,7 @@ task -id my_task -every 5000 -times 5 -command myproc
 # Now we can run introspection commands
 
 set next [task -info next] 
-# task#1 1489893921919
+# task#1 1489896165159 {every 5000 cmd myproc}
 
 set ids  [task -info ids] 
 # task#1 task#2 task#3 my_task
