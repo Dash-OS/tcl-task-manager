@@ -3,6 +3,12 @@ namespace eval ::task { variable id 0 }
 
 proc ::task::init {} { coroutine ::task::task ::task::taskman }
 
+# kill the task and all tasks within it cleanly.
+proc ::task::kill {} {
+  ::task -cancel [::task -info ids]
+  catch { rename ::task::task {} }
+}
+
 proc ::task::evaluate script {
   ::tcl::unsupported::inject ::task::task try [subst -nocommands {yield [try {$script} on error {r} {}]}]
   return [::task::task]
@@ -118,9 +124,7 @@ proc ::task::taskman {} {
         try {
           if { [dict exists $task subst] } {
             set should_execute [ uplevel #0 [subst -nocommands [dict get $task while]]]
-          } else {
-            set should_execute [ uplevel #0 [dict get $task while] ]
-          }
+          } else { set should_execute [ uplevel #0 [dict get $task while] ] }
           if { ! [string is bool -strict $should_execute] } { set should_execute 0 }
         } on error {r} { set should_execute 0 }
         set cancel_every [expr { ! $should_execute }]
@@ -136,14 +140,10 @@ proc ::task::taskman {} {
         # every - we need to schedule the task to occur again
         if { [dict exists $task times] } {
           dict incr task times -1
-          if { [dict get $task times] < 1 } {
-            continue
-          }
+          if { [dict get $task times] < 1 } { continue }
         }
         if { [dict exists $task until] } {
-          if { [clock milliseconds] >= [dict get $task until] } {
-            continue
-          }
+          if { [clock milliseconds] >= [dict get $task until] } { continue }
         }
         ::task::add_task \
           $task_id \
@@ -151,6 +151,7 @@ proc ::task::taskman {} {
           [expr { [clock milliseconds] + [dict get $task every] }]
       }
     }
+    # No need to keep these around while we sleep
     unset task_id ; unset task ; unset task_time
     # We reach here when there are either no more tasks to execute or we need
     # to schedule the next execution evaluation.  $scheduled will tell us this
