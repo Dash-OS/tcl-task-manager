@@ -68,7 +68,7 @@ proc ::task args {
       su* {
         if { [string is bool -strict $arg] && $arg } { dict set task subst 1 }
       }
-      fo* { dict set task until [expr { $now + $arg }] }
+      fo* { dict set task until [expr { $now + [::task::time $arg] }] }
       ca* - k* { set task_id $arg }
       default {
         throw error "$current is an unknown task argument.  Must be one of \"-id, -in, -at, -every, -while, -times, -until, -command, -info, -subst, -cancel\""  
