@@ -3,14 +3,14 @@ namespace eval ::task { variable id 0 }
 
 proc ::task::init {} { coroutine ::task::task ::task::taskman }
 
-# kill the task and all tasks within it cleanly.
+# kill the task and all tasks within it cleanly (although not very efficiently right now).
 proc ::task::kill {} {
   ::task -cancel [::task -info ids]
   catch { rename ::task::task {} }
 }
 
 proc ::task::evaluate script {
-  ::tcl::unsupported::inject ::task::task try [subst -nocommands {yield [try {$script} on error {r} {}]}]
+  ::tcl::unsupported::inject ::task::task try [format { yield [try {%s} on error {r} {}] } $script]
   return [::task::task]
 }
 
@@ -62,7 +62,7 @@ proc ::task args {
         set action info
         set info $arg 
       }
-      co* { dict set task cmd $arg }
+      co* { dict set task cmd $arg   }
       ti* { dict set task times $arg }
       un* { dict set task until $arg }
       su* {
@@ -86,8 +86,8 @@ proc ::task args {
     }
     info {
       switch -glob -- $info {
-        s*     { lappend script [list set scheduled] }
-        i*     { lappend script {dict keys $tasks} }
+        s*     { lappend script [list set scheduled]  }
+        i*     { lappend script {dict keys $tasks}    }
         n*time { lappend script {lindex $scheduled 1} }
         n*id   { lappend script {lindex $scheduled 0} }
         n*task { lappend script { dict get $tasks [lindex $scheduled 0] } }
