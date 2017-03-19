@@ -100,6 +100,34 @@ task -subst 1 -every 5000 -while {RunWhile $task_id} -command {MyProc $task_id}
 
 ```
 
+### Task Cancellation
+
+You can cancel scheduled tasks easily by providing the `-cancel` argument.  It accepts a 
+string or list of task_id(s) that should be cancelled.  When creating a new task, the 
+response value will be the task_id.  
+
+```tcl
+package require task
+
+proc myproc args {
+  # ... do something
+}
+
+task -every 5000 -id my_task -command myproc
+set task_id [ task -in 5000 -command myproc ]
+set task2_id [ task -in 5000 -command myproc ]
+
+task -cancel [list my_task $task_id]
+task -cancel $task2_id
+
+# Technically this also works, although the above is less verbose.
+# task -cancel -ids [list my_task $task_id]
+# task -cancel -id $task2_id
+
+# Using introspection you can do something like below to cancel all scheduled tasks.
+# task -cancel [task -info ids]
+```
+
 ### -subst argument
 
 By providing the `-subst 1` argument, you are instructing the task manager to subst the given 
