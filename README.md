@@ -100,6 +100,35 @@ task -subst 1 -every 5000 -while {RunWhile $task_id} -command {MyProc $task_id}
 
 ```
 
+### -subst argument
+
+By providing the -subst 1 argument, you are instructing the task manager to subst the given 
+command before execution.  This allows you to add arguments from our execution environment 
+before running the command.  
+
+This is useful, for example, to capture the executed task_id or to get the currently scheduled 
+tasks.  Below is a list of variables that you can capture for any `-while` or `-command` executions 
+if the `-subst` argument is set to true.  
+
+> **Note:** By default this is 0 and no substitution will be attempted.
+
+| Variable Name   |  Description   |
+| -------------   | -------------- |
+| $task_id        | This will always resolve to the task_id of the task that is being evaluated. |
+| $tasks          | The dict that holds all currently scheduled tasks (not including the current task).  |
+| $task           | The current tasks descriptor that defines its arguments. |
+| $scheduled      | The key/value list of task_id's to time_scheduled values (not including the current task). |
+
+```tcl
+package require task
+
+proc myproc {id remaining_tasks} {
+  # ... do stuff
+}
+
+task -subst 1 -every 5000 -command {myproc $task_id $tasks}
+```
+
 ### Task Introspection
 
 #### **`task`** -info $value
