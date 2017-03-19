@@ -15,6 +15,11 @@ sleep until the next task needs to be executed.
 `[task]` provides options to cancel, introspect, and execute your tasks in a variety of 
 ways such as at intervals, in a given period of time, at a specific time, and more.
 
+> **Note:** This package uses the coroutine inject command.  At the time of writing this 
+> that command is within the `[::tcl::unsupported]` namespace and should be considered 
+> before using it in your project.  We have, however, used it extensively within our 
+> own project(s) with great success.
+
 ## Installation 
 
 You can use this package by simply adding the files to your system either within one of 
@@ -49,6 +54,20 @@ These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyPr
 | -subst        | Boolean | Should we run `[subst -nocommands]` before calling the -command and -while? (Default 0) |
 | -cancel       | Task ID | Cancels one or more tasks by their ID. |
 | -info         | String  | Requests specific information as a response to the command. |
+
+## Time Resolution
+
+While most of the examples show us providing direct ms values while resolving the time, you 
+may use any values that are supported by Tcl's [clock arithmetic](http://www.tcl.tk/man/tcl8.6/TclCmd/clock.htm#M22). 
+This is handled by calling [clock add 0 {*}$argument](http://www.tcl.tk/man/tcl8.6/TclCmd/clock.htm#M22) then multiplying by 
+1000 to get our milliseconds.  This is only done if the argument is not an entier (numeric) value. 
+
+For example, it is perfectly valid to do things like:
+
+```tcl
+task -in {5 seconds} -command myproc
+task -every {1 minute 20 seconds} -command myproc
+```
 
 ## Command Examples
 

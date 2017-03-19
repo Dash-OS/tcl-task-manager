@@ -19,6 +19,23 @@ proc ::task::cmdlist args {
   return [ join $args \; ] 
 }
 
+proc ::task::time args {
+  if {[string equal $args now]} { return 0 }
+  if {[llength $args] == 1} {
+    if {![string is entier -strict $args]} {
+      set args [lindex $args 0]
+      if {[llength $args] == 1} { set args [lindex $args 0] }
+      set seconds [clock add 0 {*}$args]
+      set ms      [expr {$seconds * 1000}]
+    } else { set ms $args }
+  } else {
+    set seconds [clock add 0 {*}$args]
+    set ms      [expr {$seconds * 1000}]
+  }
+  return $ms
+}
+
+
 proc ::task args {
   if { [info commands ::task::task] eq {} } { ::task::init }
   set now [clock milliseconds]
@@ -34,11 +51,11 @@ proc ::task args {
     }
     switch -glob -- $current {
       id* { set task_id $arg }
-      in  { set execution_time [expr { $now + $arg }] }
+      in  { set execution_time [expr { $now + [::task::time $arg] }] }
       at  { set execution_time $arg }
       e*  { 
         dict set task every $arg
-        set execution_time [expr { $now + $arg }]
+        set execution_time [expr { $now + [::task::time $arg] }]
       }
       w*  { dict set task while $arg }
       in* { 
@@ -129,7 +146,7 @@ proc ::task::taskman {} {
         } on error {r} { set should_execute 0 }
         set cancel_every [expr { ! $should_execute }]
       } else { set should_execute 1 ; set cancel_every 0 }
-      
+
       if { $should_execute } { 
         if { [dict exists $task subst] } {
           catch { after 0 [subst -nocommands [dict get $task cmd]] }
@@ -213,7 +230,7 @@ proc ::task::next_task {} {
         set task [dict get $tasks $task_id]
         dict unset tasks $task_id
       } else { 
-        set task_id {} ; set task_scheduled {} ; set task {} ; set task_time {}
+        set task_id {} ; set task {} ; set task_time {}
       }
     }
     set task_id
