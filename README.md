@@ -23,6 +23,14 @@ directories.  Once you have done this you should be able to `package require` th
 
 > **Tip:** You can add to the tcl module directories list by calling `[::tcl::tm::path add $dir]`
 
+## Optional Extras
+
+There are a few optional "extras" commands which act as simple shortcut wrappers for 
+convenience.  They essentially just provide an alias to calling the `[task]` command 
+for specific use cases.  In all cases you can add them by calling `[package require extras::$package]`.
+
+These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyProc]`.
+
 ## Command Summary
 
 #### **`task`** *?...-opt ?value?...?*
@@ -92,15 +100,44 @@ task -subst 1 -every 5000 -while {RunWhile $task_id} -command {MyProc $task_id}
 
 ```
 
-As a convenience we also provide an every command which is a wrapper around task 
+## Extras Examples
+
+All of the commands below can also take the normal `[task]` arguments optionally.
+
+#### **`every`** $interval_ms $cmd
 
 ```tcl
-package require every
+package require extras::every
 
 set every_id [every 5000 {puts hi}]
 
 # sometime later
 
 every cancel $every_id
+
+```
+
+#### **`in`** $ms $cmd
+
+```tcl
+package require extras::in
+
+set in_id [in 5000 {puts hi}]
+
+# can be cancelled with [in cancel $at_id]
+
+```
+
+> Note this is almost identical to [after] except that scheduling many will only 
+> actually schedule [after] one total time.
+
+#### **`at`** $time $cmd
+
+```tcl
+package require extras::at
+
+set at_id [at [expr { [clock milliseconds] + 5000 }] {puts hi}]
+
+# can be cancelled with [at cancel $at_id]
 
 ```
