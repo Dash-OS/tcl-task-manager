@@ -15,10 +15,9 @@ proc ::task::cmdlist args {
 
 proc ::task args {
   if { [info commands ::task::task] eq {} } { ::task::init }
-  set execution_time {}
-  set task    {}
-  set current {}
-  set action  create
+  set now [clock milliseconds]
+  set execution_time $now
+  set action create
   foreach arg $args {
     if { [string equal [string index $arg 0] "-"] } {
       set current [string range $arg 1 end]
@@ -29,11 +28,11 @@ proc ::task args {
     }
     switch -glob -- $current {
       id* { set task_id $arg }
-      in  { set execution_time [expr { [clock milliseconds] + $arg }] }
+      in  { set execution_time [expr { $now + $arg }] }
       at  { set execution_time $arg }
       e*  { 
         dict set task every $arg
-        set execution_time [expr { [clock milliseconds] + $arg }]
+        set execution_time [expr { $now + $arg }]
       }
       w*  { dict set task while $arg }
       in* { 
@@ -46,7 +45,7 @@ proc ::task args {
       su* {
         if { [string is bool -strict $arg] && $arg } { dict set task subst 1 }
       }
-      fo* { dict set task until [expr { [clock milliseconds] + $arg }] }
+      fo* { dict set task until [expr { $now + $arg }] }
       ca* - k* { set task_id $arg }
       default {
         throw error "$current is an unknown task argument.  Must be one of \"-id, -in, -at, -every, -while, -times, -until, -command, -info, -subst, -cancel\""  
@@ -55,21 +54,21 @@ proc ::task args {
   }
   switch -- $action {
     create {
-      if { ! [info exists task_id] } { 
-        # If a task id was not provided, we will create one.
-        set task_id task#[incr ::task::id] 
-      }
+      if { ! [info exists task_id] } { set task_id task#[incr ::task::id] }
       lappend script [list ::task::add_task $task_id $task $execution_time]
     }
     cancel {
-      if { ! [info exists task_id] } {
-        throw error "-id argument required when cancelling a task" 
-      }
+      if { ! [info exists task_id] } { throw error "-id argument required when cancelling a task" }
       lappend script [list ::task::remove_tasks $task_id]
     }
     info {
       switch -glob -- $info {
-        s* { lappend script [list set scheduled] }
+        s*     { lappend script [list set scheduled] }
+        i*     { lappend script {dict keys $tasks} }
+        n*time { lappend script {lindex $scheduled 1} }
+        n*id   { lappend script {lindex $scheduled 0} }
+        n*task { lappend script { dict get $tasks [lindex $scheduled 0] } }
+        n*     { lappend script { list {*}[lrange $scheduled 0 1] [dict get $tasks [lindex $scheduled 0]] } }
         t* { 
           if { [info exists task_id] } {
             lappend script [format {dict get $tasks {%s}} $task_id]
@@ -77,19 +76,6 @@ proc ::task args {
             lappend script [list set tasks]
           }
         }
-        i* {
-          lappend script {dict keys $tasks}
-        }
-        n*time {
-          lappend script {lindex $scheduled 1}
-        }
-        n*id {
-          lappend script {lindex $scheduled 0}
-        }
-        n*task {
-          lappend script { dict get $tasks [lindex $scheduled 0] }
-        }
-        n* { lappend script { list {*}[lrange $scheduled 0 1] [dict get $tasks [lindex $scheduled 0]] } }
         default { throw error "$info is an unknown info response, you may request one of \"scheduled, tasks\"" }
       }
     }
