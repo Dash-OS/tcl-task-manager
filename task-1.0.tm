@@ -120,7 +120,7 @@ proc ::task::taskman {} {
       } else { set should_execute 1 ; set cancel_every 0 }
       if { $should_execute } { 
         if { [dict exists $task subst] } {
-          after 0 [subst -nocommands [dict get $task cmd]]
+          catch { after 0 [subst -nocommands [dict get $task cmd]] }
         } else { after 0 [dict get $task cmd] }
       if { [dict exists $task every] && ! $cancel_every } {
         # every - we need to schedule the task to occur again

@@ -1,11 +1,19 @@
 # Tcl Task Manager
 
 Tcl Task Manager is a powerful and lightweight task manager / scheduler which utilizes
-the awesome capabilities of tcl's coroutines to allow us to schedule and maintain tasks
-which execute based on the given arguments. 
+the awesome capabilities of Tcl's [coroutines](https://www.tcl.tk/man/tcl/TclCmd/coroutine.htm) to 
+allow us to schedule and maintain tasks which execute based on the given arguments. 
+
+It utilizes the less-known [coroutine inject](http://www.tcl.tk/cgi-bin/tct/tip/383.html) to 
+faciliate the given commands based on your arguments.
 
 One of it's important features is that it will only schedule a single `[after]` for its 
-tasks so that we do not continually add more after's to our script needlessly.
+tasks so that we do not continually add more after's to our script needlessly. It will 
+determine the next time it should wakeup based on the currently scheduled tasks then 
+sleep until the next task needs to be executed.  
+
+`[task]` provides options to cancel, introspect, and execute your tasks in a variety of 
+ways such as at intervals, in a given period of time, at a specific time, and more.
 
 ## Command Summary
 
