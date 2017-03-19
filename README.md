@@ -201,6 +201,10 @@ set tasks [task -info tasks]
 # task#1 {every 5000 cmd myproc} task#2 {cmd myproc} task#3 {cmd myproc} 
 # my_task {every 2000 times 5 cmd myproc}
 
+set scheduled [task -info scheduled]
+# my_task 1489896708158 task#1 1489896711158 
+# task#2 1489896716158 task#3 1489896721158
+
 ```
 
 > **Note:** The "times" key within the descriptor will be updated with how many 
