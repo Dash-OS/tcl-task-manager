@@ -171,7 +171,7 @@ to get some information about the currently scheduled tasks.
 | ids           | Returns a list of the currently scheduled task ids. |
 | next_id       | Returns the id of the next task that will be executed. |
 | next_time     | Returns the time that the next task will be executed. |
-| next          | Returns a two element list: [list $next_id $next_time] |
+| next          | Returns a three element list: [list $next_id $next_time $next_descriptor] |
 
 ```tcl
 package require task

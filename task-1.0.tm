@@ -86,7 +86,7 @@ proc ::task args {
         n*id {
           lappend script {lindex $scheduled 0}
         }
-        n* { lappend script {lrange $scheduled 0 1} }
+        n* { lappend script { list {*}[lrange $scheduled 0 1] [dict get $tasks [lindex $scheduled 0]] } }
         default { throw error "$info is an unknown info response, you may request one of \"scheduled, tasks\"" }
       }
     }
