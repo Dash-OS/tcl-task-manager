@@ -214,7 +214,7 @@ proc ::task::add_task { task_id context execution_time } {
 proc ::task::next_task {} { 
   uplevel 1 {
     if { $scheduled eq [list] } {
-      set task_time {} ; set task_scheduled {} ; set task_id {} ; set task [dict create]
+      set task_id {} ; set task_scheduled {}
     } else {
       set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
       if { $task_scheduled <= 0 } {
@@ -223,7 +223,7 @@ proc ::task::next_task {} {
         set task [dict get $tasks $task_id]
         dict unset tasks $task_id
       } else { 
-        set task {} ; set task_id {} ; set task_time {}
+        set task_id {} ; set task_scheduled {}
       }
     }
     set task_id
