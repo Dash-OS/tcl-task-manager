@@ -48,7 +48,7 @@ These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyPr
 | -command      | Command | The command (task) to execute. |
 | -subst        | Boolean | Should we run `[subst -nocommands]` before calling the -command and -while? (Default 0) |
 | -cancel       | Task ID | Cancels one or more tasks by their ID. |
-| -info         | String  | Request information about a task or tasks. |
+| -info         | String  | Requests specific information as a response to the command. |
 
 ## Command Examples
 
@@ -97,6 +97,45 @@ task -every 5000 -while RunWhile -command [list MyProc run_while_true]
 
 # Run the every command every 5 seconds for 30 calls of RunWhile - feed our $task_id to -while and -command.
 task -subst 1 -every 5000 -while {RunWhile $task_id} -command {MyProc $task_id}  
+
+```
+
+### Task Introspection
+
+#### **`task`** -info $value
+
+The package introduces a fairly simple introspection capability that can allow you 
+to get some information about the currently scheduled tasks.  
+
+| Argument Name |  Description   |
+| ------------- | -------------- |
+| task / tasks  | Get a dict of the currently scheduled tasks.  If -id is provided, returns that task only. |
+| scheduled     | Returns a dict of $task_id / $time_scheduled pairs. |
+| ids           | Returns a list of the currently scheduled task ids. |
+| next_id       | Returns the id of the next task that will be executed. |
+| next_time     | Returns the time that the next task will be executed. |
+| next          | Returns a two element list: [list $next_id $next_time] |
+
+```tcl
+package require task
+
+proc myproc args { 
+  # ... do stuff
+}
+
+task -every 5000 -command myproc
+task -in 10000 -command myproc
+task -in 15000 -command myproc
+task -id my_task -every 5000 -times 5 -command myproc
+
+# Now we can run introspection commands
+
+set next [task -info next] ; # task#1 1489893921919
+set ids  [task -info ids] ; # task#1 task#2 task#3 my_task
+set task [task -info task -id my_task] ; # every 5000 times 5 cmd myproc
+set tasks [task -info tasks]
+# task#1 {every 5000 cmd myproc} task#2 {cmd myproc} task#3 {cmd myproc} 
+# my_task {every 5000 times 5 cmd myproc}
 
 ```
 

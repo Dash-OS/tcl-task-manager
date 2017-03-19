@@ -4,7 +4,7 @@ namespace eval ::task { variable id 0 }
 proc ::task::init {} { coroutine ::task::task ::task::taskman }
 
 proc ::task::evaluate script {
-  ::tcl::unsupported::inject ::task::task try [subst -nocommands {yield [try {$script}]}]
+  ::tcl::unsupported::inject ::task::task try [subst -nocommands {yield [try {$script} on error {r} {}]}]
   return [::task::task]
 }
 
@@ -36,7 +36,10 @@ proc ::task args {
         set execution_time [expr { [clock milliseconds] + $arg }]
       }
       w*  { dict set task while $arg }
-      in* { set info $arg }
+      in* { 
+        set action info
+        set info $arg 
+      }
       co* { dict set task cmd $arg }
       ti* { dict set task times $arg }
       un* { dict set task until $arg }
@@ -64,17 +67,32 @@ proc ::task args {
       }
       lappend script [list ::task::remove_tasks $task_id]
     }
-  }
-  if { [info exists info] } {
-    # We want to get information as a return value to our call
-    switch -glob -- $info {
-      s* { lappend script [list set scheduled] }
-      t* { lappend script [list set tasks] }
-      default { throw error "$info is an unknown info response, you may request one of \"scheduled, tasks\"" }
+    info {
+      switch -glob -- $info {
+        s* { lappend script [list set scheduled] }
+        t* { 
+          if { [info exists task_id] } {
+            lappend script [format {dict get $tasks {%s}} $task_id]
+          } else {
+            lappend script [list set tasks]
+          }
+        }
+        i* {
+          lappend script {dict keys $tasks}
+        }
+        n*time {
+          lappend script {lindex $scheduled 1}
+        }
+        n*id {
+          lappend script {lindex $scheduled 0}
+        }
+        n* { lappend script {lrange $scheduled 0 1} }
+        default { throw error "$info is an unknown info response, you may request one of \"scheduled, tasks\"" }
+      }
     }
   }
   set response [ ::task::evaluate [::task::cmdlist $script] ]
-  if { [info exists info] } { return $response } else { return $task_id }
+  if { $action eq "info" } { return $response } else { return $task_id }
 }
 
 proc ::task::taskman {} {
@@ -118,10 +136,13 @@ proc ::task::taskman {} {
         } on error {r} { set should_execute 0 }
         set cancel_every [expr { ! $should_execute }]
       } else { set should_execute 1 ; set cancel_every 0 }
+      
       if { $should_execute } { 
         if { [dict exists $task subst] } {
           catch { after 0 [subst -nocommands [dict get $task cmd]] }
         } else { after 0 [dict get $task cmd] }
+      }
+      
       if { [dict exists $task every] && ! $cancel_every } {
         # every - we need to schedule the task to occur again
         if { [dict exists $task times] } {
