@@ -70,8 +70,8 @@ task -every {1 minute 20 seconds} -command myproc
 task -every {10 seconds} -for {30 seconds} -command myproc
 ```
 
-In all situations, the values for `-in`, `-every`, and `-for` are converted to an absolute 
-time by doing something like `[expr { [clock milliseconds] + [::task::time $arg] }]`.
+> **Note:** In all situations, the values for `-in`, `-every`, and `-for` are converted to an absolute 
+> time by doing something like `[expr { [clock milliseconds] + [::task::time $arg] }]`. 
 
 ## Command Examples
 
