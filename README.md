@@ -59,7 +59,7 @@ These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyPr
 
 While most of the examples show us providing direct ms values while resolving the time, you 
 may use any values that are supported by Tcl's [clock arithmetic](http://www.tcl.tk/man/tcl8.6/TclCmd/clock.htm#M22). 
-This is handled by calling [clock add 0 {*}$argument](http://www.tcl.tk/man/tcl8.6/TclCmd/clock.htm#M22) then multiplying by 
+This is handled by calling [[clock add 0 {*}$argument]](http://www.tcl.tk/man/tcl8.6/TclCmd/clock.htm#M22) then multiplying by 
 1000 to get our milliseconds.  This is only done if the argument is not an entier (numeric) value. 
 
 For example, it is perfectly valid to do things like:
