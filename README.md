@@ -102,7 +102,7 @@ task -subst 1 -every 5000 -while {RunWhile $task_id} -command {MyProc $task_id}
 
 ### -subst argument
 
-By providing the -subst 1 argument, you are instructing the task manager to subst the given 
+By providing the `-subst 1` argument, you are instructing the task manager to subst the given 
 command before execution.  This allows you to add arguments from our execution environment 
 before running the command.  
 
