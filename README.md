@@ -4,8 +4,8 @@ Tcl Task Manager is a powerful and lightweight task manager / scheduler which ut
 the awesome capabilities of Tcl's [coroutines](https://www.tcl.tk/man/tcl/TclCmd/coroutine.htm) to 
 allow us to schedule and maintain tasks which execute based on the given arguments. 
 
-It utilizes the less-known [coroutine inject](http://www.tcl.tk/cgi-bin/tct/tip/383.html) to 
-faciliate the given commands based on your arguments.
+It utilizes the less-known [coroutine inject](http://www.tcl.tk/cgi-bin/tct/tip/383.html) 
+command to faciliate the given commands based on your arguments.
 
 One of it's important features is that it will only schedule a single `[after]` for its 
 tasks so that we do not continually add more after's to our script needlessly. It will 
@@ -14,6 +14,14 @@ sleep until the next task needs to be executed.
 
 `[task]` provides options to cancel, introspect, and execute your tasks in a variety of 
 ways such as at intervals, in a given period of time, at a specific time, and more.
+
+## Installation 
+
+You can use this package by simply adding the files to your system either within one of 
+the tcl module directories (`[::tcl::tm::path list]`) or to one of your `$auto_path` 
+directories.  Once you have done this you should be able to `package require` them.
+
+> **Tip:** You can add to the tcl module directories list by calling `[::tcl::tm::path add $dir]`
 
 ## Command Summary
 
