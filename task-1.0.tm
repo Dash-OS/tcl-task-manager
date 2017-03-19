@@ -142,8 +142,8 @@ proc ::task::taskman {} {
           dict incr task times -1
           if { [dict get $task times] < 1 } { continue }
         }
-        if { [dict exists $task until] } {
-          if { [clock milliseconds] >= [dict get $task until] } { continue }
+        if { [dict exists $task until] && [clock milliseconds] >= [dict get $task until] } {
+          continue
         }
         ::task::add_task \
           $task_id \
@@ -204,7 +204,7 @@ proc ::task::add_task { task_id context execution_time } {
 proc ::task::next_task {} { 
   uplevel 1 {
     if { $scheduled eq [list] } {
-      set task_id {} ; set task_scheduled {}
+      set task_id {} ; set task_scheduled {} ; set task {} ; set task_time {}
     } else {
       set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
       if { $task_scheduled <= 0 } {
@@ -213,7 +213,7 @@ proc ::task::next_task {} {
         set task [dict get $tasks $task_id]
         dict unset tasks $task_id
       } else { 
-        set task_id {} ; set task_scheduled {}
+        set task_id {} ; set task_scheduled {} ; set task {} ; set task_time {}
       }
     }
     set task_id
