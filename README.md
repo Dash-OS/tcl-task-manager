@@ -102,7 +102,9 @@ task -subst 1 -every 5000 -while {RunWhile $task_id} -command {MyProc $task_id}
 
 ## Extras Examples
 
-All of the commands below can also take the normal `[task]` arguments optionally.
+All of the commands below can also take the normal `[task]` arguments optionally. 
+All of these commands will operate together - you will still always have a single 
+set of tasks that are managed by `[task]`.
 
 #### **`every`** $interval_ms $cmd
 
@@ -124,12 +126,13 @@ package require extras::in
 
 set in_id [in 5000 {puts hi}]
 
-# can be cancelled with [in cancel $at_id]
+# can be cancelled with [in cancel $in_id]
 
 ```
 
 > Note this is almost identical to [after] except that scheduling many will only 
-> actually schedule [after] one total time.
+> actually schedule [after] one total time.  You may also call it with the other 
+> `[task]` arguments to enhance its capabilities.
 
 #### **`at`** $time $cmd
 
