@@ -52,6 +52,10 @@ These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyPr
 
 ## Command Examples
 
+> **Note:** In all examples we will need to be setup to receive from the tcl event loop. 
+> For the sake of redundancy we are not adding something like `[vwait _forever_]` in the 
+> examples, but that or similar will be required.
+
 ```tcl
 package require task
 
