@@ -9,8 +9,14 @@ proc ::task::kill {} {
 }
 
 proc ::task::evaluate script {
-  ::tcl::unsupported::inject ::task::task try [format { yield [try {%s} on error {r} {}] } $script]
-  return [::task::task]
+  ::tcl::unsupported::inject ::task::task try [format {
+    yield [try {%s} on error {r} { ~! "Error" $r }] 
+  } $script]
+  set response [::task::task]
+  # We need to wake up the coroutine after each injection to process
+  # the new data and re-schedule as necessary.
+  catch { ::task::task }
+  return $response
 }
 
 proc ::task::cmdlist args { format [string repeat {%s;} [llength $args]] {*}$args }
@@ -37,6 +43,7 @@ proc ::task args {
       continue
     }
     switch -glob -- $current {
+      inject { lappend script $arg }
       id  { lappend task_id $arg }
       ids { lappend task_id {*}$arg }
       in  { set execution_time [expr { $now + [::task::time $arg] }] }
@@ -136,11 +143,12 @@ proc ::task::taskman {} {
         } on error {r} { set should_execute 0 }
         set cancel_every [expr { ! $should_execute }]
       } else { set should_execute 1 ; set cancel_every 0 }
-
+      
+      # If we should still execute the command, we will do so now.
       if { $should_execute } { 
         if { [dict exists $task subst] } {
           catch { after 0 [subst -nocommands [dict get $task cmd]] }
-        } else { after 0 [dict get $task cmd] }
+        } else { after 0 [list try [dict get $task cmd]] }
       }
       
       if { [dict exists $task every] && ! $cancel_every } {
@@ -167,6 +175,7 @@ proc ::task::taskman {} {
     # We yield and await either the next scheduled task or to be woken up
     # by injection to modify our values.
     yield [info coroutine]
+    # Reset response to our coroutine
   }
 }
 
@@ -205,15 +214,18 @@ proc ::task::add_task { task_id context execution_time } {
   upvar 1 tasks     tasks
   upvar 1 scheduled scheduled
   upvar 1 task_scheduled task_scheduled
+  upvar 1 after_id after_id
   if { [dict exists $tasks $task_id] } {
     # If we are scheduling a task with the same id of a previous task
     # then we will remove and cancel the previous task.
-    remove_tasks $task_id
+    remove_task $task_id 0
   }
   # Add to our event to the list in the appropriate position based on the scheduled time.
   set scheduled [ lsort -stride 2 -index 1 -real [lappend scheduled $task_id $execution_time] ]
   dict set tasks $task_id $context
+  
   set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
+
   return
 }
 
@@ -251,5 +263,8 @@ proc ::task::schedule_next {} {
       set task_scheduled 600000
     }
     set after_id [ after $task_scheduled [list catch [list [info coroutine]]] ]
+  } else {
+    # Nothing to Execute, we will still wakeup in 10 minutes
+    set after_id [ after 600000 [list catch [list [info coroutine]]]]
   }
 }
