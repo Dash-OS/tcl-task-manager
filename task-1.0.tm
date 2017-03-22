@@ -10,7 +10,7 @@ proc ::task::kill {} {
 
 proc ::task::evaluate script {
   ::tcl::unsupported::inject ::task::task try [format {
-    yield [try {%s} on error {r} { ~! "Error" $r }] 
+    yield [try {%s} on error {r} {}] 
   } $script]
   set response [::task::task]
   # We need to wake up the coroutine after each injection to process
