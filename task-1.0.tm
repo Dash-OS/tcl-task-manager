@@ -1,4 +1,3 @@
-package provide task 1.0
 namespace eval ::task { variable id 0 }
 
 proc ::task::init {} { coroutine ::task::task ::task::taskman }
@@ -14,27 +13,15 @@ proc ::task::evaluate script {
   return [::task::task]
 }
 
-proc ::task::cmdlist args { 
-  if { [llength $args] == 1 } { set args [lindex $args 0] }
-  return [ join $args \; ] 
-}
+proc ::task::cmdlist args { format [string repeat {%s;} [llength $args]] {*}$args }
 
 proc ::task::time args {
-  if {[string equal $args now]} { return 0 }
   if {[llength $args] == 1} {
-    if {![string is entier -strict $args]} {
-      set args [lindex $args 0]
-      if {[llength $args] == 1} { set args [lindex $args 0] }
-      set seconds [clock add 0 {*}$args]
-      set ms      [expr {$seconds * 1000}]
-    } else { set ms $args }
-  } else {
-    set seconds [clock add 0 {*}$args]
-    set ms      [expr {$seconds * 1000}]
+    if { [string is entier -strict $args] } { return $args }
+    set args [lindex $args 0]
   }
-  return $ms
+  return [expr { [clock add 0 {*}$args] * 1000 }]
 }
-
 
 proc ::task args {
   if { [info commands ::task::task] eq {} } { ::task::init }
@@ -50,7 +37,8 @@ proc ::task args {
       continue
     }
     switch -glob -- $current {
-      id* { set task_id $arg }
+      id  { lappend task_id $arg }
+      ids { lappend task_id {*}$arg }
       in  { set execution_time [expr { $now + [::task::time $arg] }] }
       at  { set execution_time $arg }
       e*  { 
@@ -69,7 +57,7 @@ proc ::task args {
         if { [string is bool -strict $arg] && $arg } { dict set task subst 1 }
       }
       fo* { dict set task until [expr { $now + [::task::time $arg] }] }
-      ca* - k* { set task_id $arg }
+      ca* - k* { lappend task_id $arg }
       default {
         throw error "$current is an unknown task argument.  Must be one of \"-id, -in, -at, -every, -while, -times, -until, -command, -info, -subst, -cancel\""  
       }
@@ -77,11 +65,13 @@ proc ::task args {
   }
   switch -- $action {
     create {
-      if { ! [info exists task_id] } { set task_id task#[incr ::task::id] }
-      lappend script [list ::task::add_task $task_id $task $execution_time]
+      if { ! [info exists task_id] || $task_id eq {} } { lappend task_id task#[incr ::task::id] }
+      foreach id $task_id {
+        lappend script [list ::task::add_task $id $task $execution_time]
+      }
     }
     cancel {
-      if { ! [info exists task_id] } { throw error "-id argument required when cancelling a task" }
+      if { ! [info exists task_id] || $task_id eq {} } { throw error "-id argument required when cancelling a task" }
       lappend script [list ::task::remove_tasks $task_id]
     }
     info {
@@ -103,8 +93,8 @@ proc ::task args {
       }
     }
   }
-  set response [ ::task::evaluate [::task::cmdlist $script] ]
-  if { $action eq "info" } { return $response } else { return $task_id }
+  set response [ ::task::evaluate [::task::cmdlist {*}$script] ]
+  if { $action eq "info" } { return $response } else { return [lindex $task_id 0] }
 }
 
 proc ::task::taskman {} {
@@ -186,16 +176,27 @@ proc ::task::remove_tasks { task_ids } {
   upvar 1 scheduled scheduled
   upvar 1 task_scheduled task_scheduled
   foreach task_id $task_ids {
-    if { [dict exists $tasks $task_id] } {
-      dict unset tasks $task_id
-      set index [lsearch $scheduled $task_id]
-      if { $index != -1 } {
-        set scheduled [lreplace $scheduled $index [expr {$index + 1}]]
-      }
-    }
+    ::task::remove_task $task_id 0
   }
   set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
   return
+}
+
+proc ::task::remove_task { task_id {reschedule 1} } {
+  upvar 1 tasks tasks
+  upvar 1 scheduled scheduled
+  if { [dict exists $tasks $task_id] } {
+    dict unset tasks $task_id
+    set index [lsearch $scheduled $task_id]
+    if { $index != -1 } {
+      set scheduled [lreplace $scheduled $index [expr {$index + 1}]]
+    }
+  }
+  if { $reschedule } {
+    # We need to reset task_scheduled when this is true
+    upvar 1 task_scheduled task_scheduled
+    set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
+  }
 }
 
 # when we add a new task to our tasks list, we will add the context to a hash (dict)
