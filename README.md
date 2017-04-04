@@ -15,10 +15,8 @@ sleep until the next task needs to be executed.
 `[task]` provides options to cancel, introspect, and execute your tasks in a variety of 
 ways such as at intervals, in a given period of time, at a specific time, and more.
 
-> **Note:** This package uses the coroutine inject command.  At the time of writing this 
-> that command is within the `[::tcl::unsupported]` namespace and should be considered 
-> before using it in your project.  We have, however, used it extensively within our 
-> own project(s) with great success.
+> **Note:** Due to Tcl's [inject] being non-functional (it fails after 1000 injects), this 
+> package no longer relies upon it.  
 
 ## Installation 
 

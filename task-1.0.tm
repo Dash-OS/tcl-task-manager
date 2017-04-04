@@ -1,6 +1,6 @@
 namespace eval ::task { variable id 0 }
 
-proc ::task::init {} { coroutine ::task::task ::task::taskman }
+proc ::task::init {} { coroutine ::task::task ::task::taskman new }
 
 # kill the task and all tasks within it cleanly (although not very efficiently right now).
 proc ::task::kill {} {
@@ -8,24 +8,15 @@ proc ::task::kill {} {
   catch { rename ::task::task {} }
 }
 
-proc ::task::evaluate script {
-  ::tcl::unsupported::inject ::task::task try [format {
-    yield [try {%s} on error {r} {}] 
-  } $script]
-  set response [::task::task]
-  # We need to wake up the coroutine after each injection to process
-  # the new data and re-schedule as necessary.
-  catch { ::task::task }
-  return $response
-}
+proc ::task::evaluate args { tailcall ::task::task $args }
 
-proc ::task::cmdlist args { format [string repeat {%s;} [llength $args]] {*}$args }
+proc ::task::cmdlist args { join $args \; }
 
 proc ::task::time args {
   if {[llength $args] == 1} {
     if { [string is entier -strict $args] } { return $args }
     set args [lindex $args 0]
-  }
+  } else { set args [string tolower $args] }
   return [expr { [clock add 0 {*}$args] * 1000 }]
 }
 
@@ -72,9 +63,11 @@ proc ::task args {
   }
   switch -- $action {
     create {
-      if { ! [info exists task_id] || $task_id eq {} } { lappend task_id task#[incr ::task::id] }
-      foreach id $task_id {
-        lappend script [list ::task::add_task $id $task $execution_time]
+      if { [info exists task] } {
+        if { ! [info exists task_id] || $task_id eq {} } { lappend task_id task#[incr ::task::id] }
+        foreach id $task_id {
+          lappend script [list ::task::add_task $id $task $execution_time]
+        }
       }
     }
     cancel {
@@ -100,31 +93,45 @@ proc ::task args {
       }
     }
   }
-  set response [ ::task::evaluate [::task::cmdlist {*}$script] ]
-  if { $action eq "info" } { return $response } else { return [lindex $task_id 0] }
+  if { $action eq "info" } { 
+    return [ ::task::evaluate info [::task::cmdlist {*}$script] ]
+  } else { 
+    ::task::evaluate inject [::task::cmdlist {*}$script]
+    return [lindex $task_id 0] 
+  }
 }
 
-proc ::task::taskman {} {
+proc ::task::taskman args {
   # Run the coroutine asynchronously from the caller
+  set coro_response [info coroutine]
   after 0 [info coroutine]
-  # tasks is a dict which holds our tasks.  Its keys are the times that they 
-  # should execute and their values contain data including the command to 
-  # execute and any other required context about the task.
-  set tasks [dict create]
-  # $scheduled is actually a "dict style" list which is sorted so that we
-  # can always assume that the next two elements represent the task_id and
-  # next_event pair.
-  set scheduled [list]
-  # $after_id will store the after_id of the coroutine which is set to the
-  # next scheduled event. This allows us to cancel it should the tasks
-  # change.
-  set after_id  {}
-  set task_time {} ; set task_scheduled {} ; set task_id {} ; set task {}
-  # Our core loop will continually iterate and execute any scheduled tasks
-  # that are provided to it.  When it has finished executing the events it will 
-  # sleep until the next event or until a new task is provided to it.
   while 1 {
     # task will tell us if we need to execute the next task
+    set args [ lassign $args request ]
+    # Run any actions before we evaluate the next tasks if necessary
+    switch -- $request {
+      reset - new {
+        # tasks is a dict which holds our tasks.  Its keys are the times that they 
+        # should execute and their values contain data including the command to 
+        # execute and any other required context about the task.
+        set tasks [dict create]
+        # $scheduled is actually a "dict style" list which is sorted so that we
+        # can always assume that the next two elements represent the task_id and
+        # next_event pair.
+        set scheduled [list]
+        # $after_id will store the after_id of the coroutine which is set to the
+        # next scheduled event. This allows us to cancel it should the tasks
+        # change.
+        if { [info exists after_id] } { after cancel $after_id }
+        set after_id  {}
+        set task_time {} ; set task_scheduled {} ; set task_id {} ; set task {}
+        # Our core loop will continually iterate and execute any scheduled tasks
+        # that are provided to it.  When it has finished executing the events it will 
+        # sleep until the next event or until a new task is provided to it.
+      }
+      inject { try [lindex $args 0] on error {} {} }
+      info   { set coro_response [try [lindex $args 0] on error {} {}] }
+    }
     while { [next_task] ne {} } {
       # We run in an after so that the execution will not be in our coroutines
       # context anymore.  If we don't do this then we won't be able to schedule
@@ -138,7 +145,7 @@ proc ::task::taskman {} {
         try {
           if { [dict exists $task subst] } {
             set should_execute [ uplevel #0 [subst -nocommands [dict get $task while]]]
-          } else { set should_execute [ uplevel #0 [dict get $task while] ] }
+          } else { set should_execute [ uplevel #0 [dict get $task while]] }
           if { ! [string is bool -strict $should_execute] } { set should_execute 0 }
         } on error {r} { set should_execute 0 }
         set cancel_every [expr { ! $should_execute }]
@@ -165,17 +172,18 @@ proc ::task::taskman {} {
           $task \
           [expr { [clock milliseconds] + [dict get $task every] }]
       }
+      
     }
     # No need to keep these around while we sleep
-    unset task_id ; unset task ; unset task_time
+    unset -nocomplain task_id ; unset -nocomplain task ; unset -nocomplain task_time
     # We reach here when there are either no more tasks to execute or we need
     # to schedule the next execution evaluation.  $scheduled will tell us this
     # as it will either be {} or the ms until the next event.
     schedule_next
     # We yield and await either the next scheduled task or to be woken up
     # by injection to modify our values.
-    yield [info coroutine]
-    # Reset response to our coroutine
+    set args [ yield $coro_response ]
+    set coro_response [info coroutine]
   }
 }
 
@@ -240,7 +248,7 @@ proc ::task::next_task {} {
       if { $task_scheduled <= 0 } {
         # If the event will be executed we will remove them from the scheduled list
         set scheduled [lassign $scheduled task_id task_time]
-        set task [dict get $tasks $task_id]
+        set task      [dict get $tasks $task_id]
         dict unset tasks $task_id
       } else { 
         set task_id {} ; set task {} ; set task_time {}
