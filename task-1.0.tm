@@ -62,8 +62,8 @@ proc ::task args {
         set execution_time [expr { $now + [::task::time $arg] }]
       }
       while - w*  { dict set task while $arg }
-      info  - i* { 
-        set action info
+      info  - i* {  
+        if { $action eq "create" } { set action info }
         set info $arg 
       }
       flag  { lappend flags $arg    }
@@ -100,7 +100,8 @@ proc ::task args {
     cancel {
       if { ! [info exists task_id] || $task_id eq {} } { throw error "-id argument required when cancelling a task" }
       if { ! [info exists flags] } { set flags [list] }
-      lappend script [list ::task::remove_tasks $task_id $flags]
+      if { ! [info exists info]  } { set info total }
+      lappend script [list ::task::remove_tasks $task_id $flags $info]
     }
     info {
       switch -glob -- $info {
@@ -212,25 +213,29 @@ proc ::task::taskman args {
   }
 }
 
-# removes a task from the scheduled execution context
-proc ::task::remove_tasks { task_ids {flags {}} } {
+# removes a task from the scheduled execution context, responds with the
+# value requested.
+# respond_with can be: total (total tasks removed) | ids (ids of removed tasks)
+proc ::task::remove_tasks { task_ids {flags {}} {respond_with total} } {
   upvar 1 tasks tasks
   upvar 1 scheduled scheduled
   upvar 1 task_scheduled task_scheduled
-  set removed_tasks 0
+  set total 0
+  set ids   [list]
   foreach task_id $task_ids {
-    incr removed_tasks [::task::remove_task $task_id 0 $flags]
+    ::task::remove_task $task_id 0 $flags
   }
-  if { $removed_tasks > 0 } {
+  if { $total > 0 } {
     set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]  
   }
-  return $removed_tasks
+  return [set $respond_with]
 }
 
 proc ::task::remove_task { task_id {reschedule 1} {flags {}} } {
   upvar 1 tasks tasks
   upvar 1 scheduled scheduled
-  set removed_tasks 0
+  upvar 1 total total
+  upvar 1 ids   ids
   # When cancelling, we sort indexes in decreasing order.  This allows us 
   # to remove entries without worry that the next match will have changed
   # due to the list changing.
@@ -238,8 +243,9 @@ proc ::task::remove_task { task_id {reschedule 1} {flags {}} } {
     if { $index == -1    } { break }
     # If a value matches in the list we dont want to remove it.
     if { $index % 2 != 0 } { continue }
-    incr removed_tasks
+    incr total
     set task_id [lindex $scheduled $index]
+    lappend ids $task_id
     if { [dict exists $tasks $task_id] } {
       dict unset tasks $task_id
     }
@@ -250,7 +256,7 @@ proc ::task::remove_task { task_id {reschedule 1} {flags {}} } {
     upvar 1 task_scheduled task_scheduled
     set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
   }
-  return $removed_tasks
+  return
 }
 
 # when we add a new task to our tasks list, we will add the context to a hash (dict)

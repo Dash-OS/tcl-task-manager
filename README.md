@@ -186,6 +186,26 @@ task -cancel $task2_id
 # task -cancel [task -info ids]
 ```
 
+#### Modifying Cancellation Response Value
+
+Sometimes you may want to receive the task id's that were cancelled rather than the total 
+number of tasks.  Or perhaps another value?  You may use the -info option with cancellation 
+to control the value which will be returned.
+
+While there are more possibilities (see below tip), the main use would be to request that a list 
+of `task_id`'s are returned instead of the total cancelled. 
+
+```tcl
+# default
+set total_cancelled [ task -glob -cancel myprefix* -info ids ]
+
+# get a list of cancelled id's rather than the total cancelled
+set cancelled_ids   [ task -glob -cancel myprefix* -info ids ]
+```
+
+> **Tip:** This simply returns a `[set $value]` so any of the variables known to the `[::task::remove_tasks]`
+> proc may be given.  
+
 ### -subst argument
 
 By providing the `-subst 1` argument, you are instructing the task manager to subst the given 
