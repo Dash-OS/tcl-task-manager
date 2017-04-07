@@ -50,7 +50,7 @@ These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyPr
 | -for          | Time    | Modifies every so it only executes for the given time. |
 | -while        | Command | Only execute the task if command is true.  Cancel every if false. |
 | -command      | Command | The command (task) to execute. |
-| -glob         | Boolean | Adds the -all and -glob flags to the flags.  Mostly useful for -cancel where ids use glob pattern while cancelling. |
+| -glob         | Boolean | Adds the -all and -glob flags to the request flags.  Mostly useful for -cancel where ids use glob pattern while cancelling. |
 | -flag         | String  | Adds the given flag to the list of flags to send to the request. |
 | -flags        | List    | Adds the list of flags to the flags to send to the request. |
 | -subst        | Boolean | Should we run `[subst -nocommands]` before calling the `-command` and `-while` requests. (Default 0) |
@@ -93,6 +93,8 @@ task -glob -cancel foo*
 
 # Cancel all tasks that don't start with foo
 task -flags [list -all -not -glob] -cancel foo*
+# The above is also synonymous with:
+task -glob -flags [list -not] -cancel foo*
 ```
 
 > **Tip:** By default the lsearch command that looks for the id's that we want to cancel has the `-exact` flag added to it. 

@@ -32,7 +32,7 @@ proc ::task args {
         set current [string range $arg 1 end]
         switch -glob -- $current {
           ca*   - k*   { set action cancel }
-          match - glob { lappend flags -all -glob   }
+          glob         { lappend flags -all -glob   }
           regex*       { lappend flags -all -regexp }
         }
         continue
@@ -44,9 +44,13 @@ proc ::task args {
       ids    { lappend task_id {*}$arg }
       in     { set execution_time [expr { $now + [::task::time $arg] }] }
       at     { set execution_time $arg }
-      match - glob { 
+      regex* - glob { 
         if { [string is false $arg] } { 
-          set flags [lsearch -all -inline -not -exact $flags -glob] 
+          set flags [lsearch -all -inline -not -exact $flags -all]
+          switch -glob -- $current {
+            r* { set flags [lsearch -all -inline -not -exact $flags -regexp] }
+            g* { set flags [lsearch -all -inline -not -exact $flags -glob] }
+          }
         }
       }
       delay - dela* {
