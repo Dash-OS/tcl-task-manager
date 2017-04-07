@@ -40,18 +40,18 @@ These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyPr
 | ------------- | ------  | -------------- |
 | -id           | String  | The id to use.  If not provided, one will be generated during creation. |
 | -ids          | List    | Adds a list of IDs to operate on. Will create multiple tasks if creating a task. |
-| -in           | Time    | Schedules the task to execute after the given milliseconds. |
+| -in           | [Time](#time-resolution)    | Schedules the task to execute after the given milliseconds. |
 | -at           | Unix MS | Provide the exact time to execute the task. |
-| -every        | Time    | Execute the task every MS. |
-| -times        | Integer | Modifies every so it only executes the given # of times. |
+| -every        | [Time](#time-resolution)    | Execute the task every MS. |
+| -times        | Number  | Modifies every so it only executes the given # of times. |
 | -until        | Unix MS | Modifies every so it only executes until the given time. |
-| -for          | Time    | Modifies every so it only executes for the given time. |
+| -for          | [Time](#time-resolution)    | Modifies every so it only executes for the given time. |
 | -while        | Command | Only execute the task if command is true.  Cancel every if false. |
 | -command      | Command | The command (task) to execute. |
 | [-glob](#request-flags)       | Boolean | Adds the -all and -glob flags to the request flags.  Mostly useful for -cancel where ids use glob pattern while cancelling. |
 | [-flag](#request-flags)       | String  | Adds the given flag to the list of flags to send to the request. |
 | [-flags](#request-flags)      | List    | Adds the list of flags to the flags to send to the request. |
-| [-subst](#-subst-argument)     | Boolean | Should we run `[subst -nocommands]` before calling the `-command` and `-while` requests. (Default 0) |
+| [-subst](#-subst-argument)    | Boolean | Should we run `[subst -nocommands]` before calling the `-command` and `-while` requests. (Default 0) |
 | [-cancel](#task-cancellation) | Task ID | Cancels one or more tasks by their ID. |
 | [-info](#task-introspection)  | String  | Requests specific information as a response to the command. |
 
