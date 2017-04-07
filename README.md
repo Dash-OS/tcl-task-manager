@@ -51,7 +51,7 @@ These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyPr
 | [-glob](#request-flags)       | Boolean | Adds the -all and -glob flags to the request flags.  Mostly useful for -cancel where ids use glob pattern while cancelling. |
 | [-flag](#request-flags)       | String  | Adds the given flag to the list of flags to send to the request. |
 | [-flags](#request-flags)      | List    | Adds the list of flags to the flags to send to the request. |
-| [-subst](#subst-argument)     | Boolean | Should we run `[subst -nocommands]` before calling the `-command` and `-while` requests. (Default 0) |
+| [-subst](#-subst-argument)     | Boolean | Should we run `[subst -nocommands]` before calling the `-command` and `-while` requests. (Default 0) |
 | [-cancel](#task-cancellation) | Task ID | Cancels one or more tasks by their ID. |
 | [-info](#task-introspection)  | String  | Requests specific information as a response to the command. |
 
@@ -196,8 +196,8 @@ While there are more possibilities (see below tip), the main use would be to req
 of `task_id`'s are returned instead of the total cancelled. 
 
 ```tcl
-# default
-set total_cancelled [ task -glob -cancel myprefix* -info ids ]
+# default ("-info total" is not required)
+set total_cancelled [ task -glob -cancel myprefix* -info total ]
 
 # get a list of cancelled id's rather than the total cancelled
 set cancelled_ids   [ task -glob -cancel myprefix* -info ids ]
