@@ -53,7 +53,7 @@ These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyPr
 | -glob         | Boolean | Adds the -all and -glob flags to the flags.  Mostly useful for -cancel where ids use glob pattern while cancelling. |
 | -flag         | String  | Adds the given flag to the list of flags to send to the request. |
 | -flags        | List    | Adds the list of flags to the flags to send to the request. |
-| -subst        | Boolean | Should we run `[subst -nocommands]` before calling the -command and -while? (Default 0) |
+| -subst        | Boolean | Should we run `[subst -nocommands]` before calling the `-command` and `-while` requests. (Default 0) |
 | -cancel       | Task ID | Cancels one or more tasks by their ID. |
 | -info         | String  | Requests specific information as a response to the command. |
 
@@ -80,8 +80,6 @@ task -every {10 seconds} -for {50 seconds} -command myproc
 Flags can be provided during a request.  These allow modification to how the request will handle itself.  At 
 this time they are used during a `-cancel` request to modify how we search for the matching id's to cancel.
 
-For example:
-
 ```tcl
 task -id foo_bar -in {5 seconds} -command myproc
 task -id foo_bax -in 5000 -command myproc
@@ -96,6 +94,9 @@ task -glob -cancel foo*
 # Cancel all tasks that don't start with foo
 task -flags [list -all -not -glob] -cancel foo*
 ```
+
+> **Tip:** By default the lsearch command that looks for the id's that we want to cancel has the `-exact` flag added to it. 
+> Adding flags allows you to override that in this case.
 
 ## Command Examples
 
