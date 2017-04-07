@@ -1,4 +1,4 @@
-namespace eval ::task { variable id 0 }
+namespace eval ::task { variable id 0 ; variable evals 0 }
 
 proc ::task::init {} { coroutine ::task::task ::task::taskman new }
 
@@ -25,42 +25,63 @@ proc ::task args {
   set now [clock milliseconds]
   set execution_time $now
   set action create
+  set current {}
   foreach arg $args {
-    if { [string equal [string index $arg 0] "-"] } {
-      set current [string range $arg 1 end]
-      switch -glob -- $current {
-        ca* - k* { set action cancel }
+    if { $current ni [list flag flags] } {
+      if { [string equal [string index $arg 0] "-"] } {
+        set current [string range $arg 1 end]
+        switch -glob -- $current {
+          ca*   - k*   { set action cancel }
+          match - glob { lappend flags -all -glob   }
+          regex*       { lappend flags -all -regexp }
+        }
+        continue
       }
-      continue
     }
     switch -glob -- $current {
       inject { lappend script $arg }
-      id  { lappend task_id $arg }
-      ids { lappend task_id {*}$arg }
-      in  { set execution_time [expr { $now + [::task::time $arg] }] }
-      at  { set execution_time $arg }
-      e*  { 
+      id     { lappend task_id $arg }
+      ids    { lappend task_id {*}$arg }
+      in     { set execution_time [expr { $now + [::task::time $arg] }] }
+      at     { set execution_time $arg }
+      match - glob { 
+        if { [string is false $arg] } { 
+          set flags [lsearch -all -inline -not -exact $flags -glob] 
+        }
+      }
+      delay - dela* {
+        # delay the execution time of a current id 
+        dict set task delay_execution $arg
+      }
+      every - e*  { 
         dict set task every $arg
         set execution_time [expr { $now + [::task::time $arg] }]
       }
-      w*  { dict set task while $arg }
-      in* { 
+      while - w*  { dict set task while $arg }
+      info  - i* { 
         set action info
         set info $arg 
       }
-      co* { dict set task cmd $arg   }
-      ti* { dict set task times $arg }
-      un* { dict set task until $arg }
-      su* {
+      flag  { lappend flags $arg    }
+      flags { lappend flags {*}$arg }
+      cancel  - kill - ca* - k* { lappend task_id $arg }
+      command - c* { dict set task cmd $arg   }
+      times   - t* { dict set task times $arg }
+      until   - u* { dict set task until $arg }
+      for     - f* { dict set task until [expr { $now + [::task::time $arg] }] }
+      subst   - s* {
         if { [string is bool -strict $arg] && $arg } { dict set task subst 1 }
       }
-      fo* { dict set task until [expr { $now + [::task::time $arg] }] }
-      ca* - k* { lappend task_id $arg }
       default {
         throw error "$current is an unknown task argument.  Must be one of \"-id, -in, -at, -every, -while, -times, -until, -command, -info, -subst, -cancel\""  
       }
     }
+    set current {}
   }
+  
+  # If we have any flags and we are sending a task, attach them to the task
+  if { [info exists flags] && [info exists task] } { dict set task flags $flags }
+  
   switch -- $action {
     create {
       if { [info exists task] } {
@@ -68,21 +89,25 @@ proc ::task args {
         foreach id $task_id {
           lappend script [list ::task::add_task $id $task $execution_time]
         }
+      } else {
+        throw INVALID_TASK_ARGS "The requested task can not be created, are you missing the -command argument?  | $args"
       }
     }
     cancel {
       if { ! [info exists task_id] || $task_id eq {} } { throw error "-id argument required when cancelling a task" }
-      lappend script [list ::task::remove_tasks $task_id]
+      if { ! [info exists flags] } { set flags [list] }
+      puts "flags $flags"
+      lappend script [list ::task::remove_tasks $task_id $flags]
     }
     info {
       switch -glob -- $info {
-        s*     { lappend script [list set scheduled]  }
-        i*     { lappend script {dict keys $tasks}    }
-        n*time { lappend script {lindex $scheduled 1} }
-        n*id   { lappend script {lindex $scheduled 0} }
-        n*task { lappend script { dict get $tasks [lindex $scheduled 0] } }
-        n*     { lappend script { list {*}[lrange $scheduled 0 1] [dict get $tasks [lindex $scheduled 0]] } }
-        t* { 
+        scheduled - s*     { lappend script [list set scheduled]  }
+        ids       - i*     { lappend script {dict keys $tasks}    }
+        next_time - n*time { lappend script {lindex $scheduled 1} }
+        next_id   - n*id   { lappend script {lindex $scheduled 0} }
+        next_task - n*task { lappend script { dict get $tasks [lindex $scheduled 0] } }
+        next      - n*     { lappend script { list {*}[lrange $scheduled 0 1] [dict get $tasks [lindex $scheduled 0]] } }
+        tasks     - t* { 
           if { [info exists task_id] } {
             lappend script [format {dict get $tasks {%s}} $task_id]
           } else {
@@ -106,6 +131,7 @@ proc ::task::taskman args {
   set coro_response [info coroutine]
   after 0 [info coroutine]
   while 1 {
+    incr ::task::evals
     # task will tell us if we need to execute the next task
     set args [ lassign $args request ]
     # Run any actions before we evaluate the next tasks if necessary
@@ -133,6 +159,7 @@ proc ::task::taskman args {
       info   { set coro_response [try [lindex $args 0] on error {} {}] }
     }
     while { [next_task] ne {} } {
+      
       # We run in an after so that the execution will not be in our coroutines
       # context anymore.  If we don't do this then we won't be able to schedule
       # tasks within the execution of a task.
@@ -188,32 +215,39 @@ proc ::task::taskman args {
 }
 
 # removes a task from the scheduled execution context
-proc ::task::remove_tasks { task_ids } {
+proc ::task::remove_tasks { task_ids {flags {}} } {
   upvar 1 tasks tasks
   upvar 1 scheduled scheduled
   upvar 1 task_scheduled task_scheduled
   foreach task_id $task_ids {
-    ::task::remove_task $task_id 0
+    ::task::remove_task $task_id 0 $flags
   }
   set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
   return
 }
 
-proc ::task::remove_task { task_id {reschedule 1} } {
+proc ::task::remove_task { task_id {reschedule 1} {flags {}} } {
   upvar 1 tasks tasks
   upvar 1 scheduled scheduled
-  if { [dict exists $tasks $task_id] } {
-    dict unset tasks $task_id
-    set index [lsearch $scheduled $task_id]
-    if { $index != -1 } {
-      set scheduled [lreplace $scheduled $index [expr {$index + 1}]]
+  # When cancelling, we sort indexes in decreasing order.  This allows us 
+  # to remove entries without worry that the next match will have changed
+  # due to the list changing.
+  foreach index [lsort -decreasing -real [lsearch -exact {*}$flags $scheduled $task_id]] {
+    if { $index == -1    } { break }
+    # If a value matches in the list we dont want to remove it.
+    if { $index % 2 != 0 } { continue }
+    set task_id [lindex $scheduled $index]
+    if { [dict exists $tasks $task_id] } {
+      dict unset tasks $task_id
     }
+    set scheduled [lreplace $scheduled $index [expr {$index + 1}]]
   }
   if { $reschedule } {
     # We need to reset task_scheduled when this is true
     upvar 1 task_scheduled task_scheduled
     set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
   }
+  return
 }
 
 # when we add a new task to our tasks list, we will add the context to a hash (dict)
@@ -226,12 +260,22 @@ proc ::task::add_task { task_id context execution_time } {
   if { [dict exists $tasks $task_id] } {
     # If we are scheduling a task with the same id of a previous task
     # then we will remove and cancel the previous task.
+    if { [dict exists $context delay_execution] } {
+      set execution_time [expr { [dict get $scheduled $task_id] + [dict get $context delay_execution] }]
+      set context        [dict get $tasks $task_id]
+    }
     remove_task $task_id 0
   }
-  # Add to our event to the list in the appropriate position based on the scheduled time.
-  set scheduled [ lsort -stride 2 -index 1 -real [lappend scheduled $task_id $execution_time] ]
-  dict set tasks $task_id $context
-  
+  if { [dict exists $context cmd] } {
+    dict set tasks $task_id $context
+    # Add to our event to the list in the appropriate position based on the scheduled time.
+    set scheduled [ lsort -stride 2 -index 1 -real [lappend scheduled $task_id $execution_time] ]
+  } else {
+    # If we appear to have an invalid task (it doesnt have a cmd to execute) we will instead 
+    # simply sort the scheduled list and schedule next.
+    set scheduled [ lsort -stride 2 -index 1 -real $scheduled ]
+  }
+
   set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
 
   return

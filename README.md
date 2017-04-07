@@ -41,14 +41,18 @@ These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyPr
 | Argument Name |  Type   |  Description   |
 | ------------- | ------  | -------------- |
 | -id           | String  | The id to use.  If not provided, one will be generated during creation. |
-| -in           | MS      | Schedules the task to execute after the given milliseconds. |
+| -ids          | List    | Adds a list of IDs to operate on. Will create multiple tasks if creating a task. |
+| -in           | Time    | Schedules the task to execute after the given milliseconds. |
 | -at           | Unix MS | Provide the exact time to execute the task. |
-| -every        | MS      | Execute the task every MS. |
+| -every        | Time    | Execute the task every MS. |
 | -times        | Integer | Modifies every so it only executes the given # of times. |
 | -until        | Unix MS | Modifies every so it only executes until the given time. |
-| -for          | MS      | Modifies every so it only executes for the given # of MS. |
+| -for          | Time    | Modifies every so it only executes for the given time. |
 | -while        | Command | Only execute the task if command is true.  Cancel every if false. |
 | -command      | Command | The command (task) to execute. |
+| -glob         | Boolean | Adds the -all and -glob flags to the flags.  Mostly useful for -cancel where ids use glob pattern while cancelling. |
+| -flag         | String  | Adds the given flag to the list of flags to send to the request. |
+| -flags        | List    | Adds the list of flags to the flags to send to the request. |
 | -subst        | Boolean | Should we run `[subst -nocommands]` before calling the -command and -while? (Default 0) |
 | -cancel       | Task ID | Cancels one or more tasks by their ID. |
 | -info         | String  | Requests specific information as a response to the command. |
@@ -65,11 +69,33 @@ For example, it is perfectly valid to do things like:
 ```tcl
 task -in {5 seconds} -command myproc
 task -every {1 minute 20 seconds} -command myproc
-task -every {10 seconds} -for {30 seconds} -command myproc
+task -every {10 seconds} -for {50 seconds} -command myproc
 ```
 
 > **Note:** In all situations, the values for `-in`, `-every`, and `-for` are converted to an absolute 
 > time by doing something like `[expr { [clock milliseconds] + [::task::time $arg] }]`. 
+
+## Request Flags
+
+Flags can be provided during a request.  These allow modification to how the request will handle itself.  At 
+this time they are used during a `-cancel` request to modify how we search for the matching id's to cancel.
+
+For example:
+
+```tcl
+task -id foo_bar -in {5 seconds} -command myproc
+task -id foo_bax -in 5000 -command myproc
+task -id foo_qux -in 10000 -command myproc
+task -id bar -in 5000 -command myproc
+
+# Cancel all tasks that start with foo
+task -glob -cancel foo*
+
+#### -- OR -- ####
+
+# Cancel all tasks that don't start with foo
+task -flags [list -all -not -glob] -cancel foo*
+```
 
 ## Command Examples
 
