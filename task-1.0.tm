@@ -100,7 +100,6 @@ proc ::task args {
     cancel {
       if { ! [info exists task_id] || $task_id eq {} } { throw error "-id argument required when cancelling a task" }
       if { ! [info exists flags] } { set flags [list] }
-      puts "flags $flags"
       lappend script [list ::task::remove_tasks $task_id $flags]
     }
     info {
@@ -122,12 +121,7 @@ proc ::task args {
       }
     }
   }
-  if { $action eq "info" } { 
-    return [ ::task::evaluate info [::task::cmdlist {*}$script] ]
-  } else { 
-    ::task::evaluate inject [::task::cmdlist {*}$script]
-    return [lindex $task_id 0] 
-  }
+  return [ ::task::evaluate inject [::task::cmdlist {*}$script] ]
 }
 
 proc ::task::taskman args {
@@ -159,11 +153,11 @@ proc ::task::taskman args {
         # that are provided to it.  When it has finished executing the events it will 
         # sleep until the next event or until a new task is provided to it.
       }
-      inject { try [lindex $args 0] on error {} {} }
-      info   { set coro_response [try [lindex $args 0] on error {} {}] }
+      inject { 
+        set coro_response [try [lindex $args 0] on error {} {}]
+      }
     }
     while { [next_task] ne {} } {
-      
       # We run in an after so that the execution will not be in our coroutines
       # context anymore.  If we don't do this then we won't be able to schedule
       # tasks within the execution of a task.
@@ -223,16 +217,20 @@ proc ::task::remove_tasks { task_ids {flags {}} } {
   upvar 1 tasks tasks
   upvar 1 scheduled scheduled
   upvar 1 task_scheduled task_scheduled
+  set removed_tasks 0
   foreach task_id $task_ids {
-    ::task::remove_task $task_id 0 $flags
+    incr removed_tasks [::task::remove_task $task_id 0 $flags]
   }
-  set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
-  return
+  if { $removed_tasks > 0 } {
+    set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]  
+  }
+  return $removed_tasks
 }
 
 proc ::task::remove_task { task_id {reschedule 1} {flags {}} } {
   upvar 1 tasks tasks
   upvar 1 scheduled scheduled
+  set removed_tasks 0
   # When cancelling, we sort indexes in decreasing order.  This allows us 
   # to remove entries without worry that the next match will have changed
   # due to the list changing.
@@ -240,6 +238,7 @@ proc ::task::remove_task { task_id {reschedule 1} {flags {}} } {
     if { $index == -1    } { break }
     # If a value matches in the list we dont want to remove it.
     if { $index % 2 != 0 } { continue }
+    incr removed_tasks
     set task_id [lindex $scheduled $index]
     if { [dict exists $tasks $task_id] } {
       dict unset tasks $task_id
@@ -251,7 +250,7 @@ proc ::task::remove_task { task_id {reschedule 1} {flags {}} } {
     upvar 1 task_scheduled task_scheduled
     set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
   }
-  return
+  return $removed_tasks
 }
 
 # when we add a new task to our tasks list, we will add the context to a hash (dict)
@@ -282,7 +281,7 @@ proc ::task::add_task { task_id context execution_time } {
 
   set task_scheduled [expr { [lindex $scheduled 1] - [clock milliseconds] }]
 
-  return
+  return $task_id
 }
 
 # next_event reads the tasks and determines the next time that we should

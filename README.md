@@ -48,12 +48,12 @@ These extras are `[at]`, `[every]`, `[in]` and are called like `[every 5000 MyPr
 | -for          | Time    | Modifies every so it only executes for the given time. |
 | -while        | Command | Only execute the task if command is true.  Cancel every if false. |
 | -command      | Command | The command (task) to execute. |
-| -glob         | Boolean | Adds the -all and -glob flags to the request flags.  Mostly useful for -cancel where ids use glob pattern while cancelling. |
-| -flag         | String  | Adds the given flag to the list of flags to send to the request. |
-| -flags        | List    | Adds the list of flags to the flags to send to the request. |
-| -subst        | Boolean | Should we run `[subst -nocommands]` before calling the `-command` and `-while` requests. (Default 0) |
-| -cancel       | Task ID | Cancels one or more tasks by their ID. |
-| -info         | String  | Requests specific information as a response to the command. |
+| [-glob](#request-flags)       | Boolean | Adds the -all and -glob flags to the request flags.  Mostly useful for -cancel where ids use glob pattern while cancelling. |
+| [-flag](#request-flags)       | String  | Adds the given flag to the list of flags to send to the request. |
+| [-flags](#request-flags)      | List    | Adds the list of flags to the flags to send to the request. |
+| [-subst](#subst-argument)     | Boolean | Should we run `[subst -nocommands]` before calling the `-command` and `-while` requests. (Default 0) |
+| [-cancel](#task-cancellation) | Task ID | Cancels one or more tasks by their ID. |
+| [-info](#task-introspection)  | String  | Requests specific information as a response to the command. |
 
 ## Time Resolution
 
@@ -78,6 +78,9 @@ task -every {10 seconds} -for {50 seconds} -command myproc
 Flags can be provided during a request.  These allow modification to how the request will handle itself.  At 
 this time they are used during a `-cancel` request to modify how we search for the matching id's to cancel.
 
+Flags are provided in a few different ways.  There are shortcut flags (-glob) which are defined directly to 
+`[task]` as well as the -flag (single flag) and -flags (list of flags) options.
+
 ```tcl
 task -id foo_bar -in {5 seconds} -command myproc
 task -id foo_bax -in 5000 -command myproc
@@ -93,6 +96,8 @@ task -glob -cancel foo*
 task -flags [list -all -not -glob] -cancel foo*
 # The above is also synonymous with:
 task -glob -flags [list -not] -cancel foo*
+# and
+task -glob -flag -not -cancel foo*
 ```
 
 > **Tip:** By default the lsearch command that looks for the id's that we want to cancel has the `-exact` flag added to it. 
@@ -155,8 +160,9 @@ task -subst 1 -every 5000 -while {RunWhile $task_id} -command {MyProc $task_id}
 ### Task Cancellation
 
 You can cancel scheduled tasks easily by providing the `-cancel` argument.  It accepts a 
-string or list of task_id(s) that should be cancelled.  When creating a new task, the 
-response value will be the task_id.  
+string or list of task_id(s) that should be cancelled.  The response value of the cancellation 
+will be the number of tasks which were cancelled (if any).  This is helpful when using glob-style 
+cancellation as discussed in the above [flags](#request-flags) section.
 
 ```tcl
 package require task
