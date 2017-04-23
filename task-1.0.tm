@@ -43,7 +43,14 @@ proc ::task args {
       id     { lappend task_id $arg }
       ids    { lappend task_id {*}$arg }
       in     { set execution_time [expr { $now + [::task::time $arg] }] }
-      at     { set execution_time $arg }
+      at     { 
+        if { [string length $arg] < [string length $now] } {
+          # We assume this is seconds since it couldnt be milliseconds :-P
+          set execution_time [expr { $arg * 1000 }]
+        } else {
+          set execution_time $arg 
+        }
+      }
       regex* - glob { 
         if { [string is false $arg] } { 
           set flags [lsearch -all -inline -not -exact $flags -all]
@@ -181,7 +188,9 @@ proc ::task::taskman args {
       if { $should_execute } { 
         if { [dict exists $task subst] } {
           catch { after 0 [subst -nocommands [dict get $task cmd]] }
-        } else { after 0 [list try [dict get $task cmd]] }
+        } else { 
+          after 0 [list try [dict get $task cmd]]
+        }
       }
       
       if { [dict exists $task every] && ! $cancel_every } {
@@ -211,6 +220,10 @@ proc ::task::taskman args {
     set args [ yield $coro_response ]
     set coro_response [info coroutine]
   }
+}
+
+proc ::task::execute { cmd } {
+  
 }
 
 # removes a task from the scheduled execution context, responds with the
