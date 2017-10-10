@@ -130,7 +130,7 @@ proc ::task args {
       if { ! [info exists flags] } {
         set flags [list]
       }
-      if { ! [info exists info]  } {
+      if { ! [info exists info] } {
         set info total
       }
       lappend script [list ::task::remove_tasks $task_id $flags $info]
@@ -150,11 +150,13 @@ proc ::task args {
             lappend script [list set tasks]
           }
         }
-        default { throw error "$info is an unknown info response, you may request one of \"scheduled, tasks\"" }
+        default {
+          throw error "$info is an unknown info response, you may request one of \"scheduled, tasks\""
+        }
       }
     }
   }
-  return [::task::evaluate inject [::task::cmdlist {*}$script]]
+  tailcall ::task::evaluate inject [::task::cmdlist {*}$script]
 }
 
 proc ::task::taskman args {
@@ -164,7 +166,7 @@ proc ::task::taskman args {
   while 1 {
     incr ::task::evals
     # task will tell us if we need to execute the next task
-    set args [ lassign $args request ]
+    set args [lassign $args request]
     # Run any actions before we evaluate the next tasks if necessary
     switch -- $request {
       reset - new {
@@ -179,9 +181,14 @@ proc ::task::taskman args {
         # $after_id will store the after_id of the coroutine which is set to the
         # next scheduled event. This allows us to cancel it should the tasks
         # change.
-        if { [info exists after_id] } { after cancel $after_id }
+        if { [info exists after_id] } {
+          after cancel $after_id
+        }
         set after_id  {}
-        set task_time {} ; set task_scheduled {} ; set task_id {} ; set task {}
+        set task_time {}
+        set task_scheduled {}
+        set task_id {}
+        set task {}
         # Our core loop will continually iterate and execute any scheduled tasks
         # that are provided to it.  When it has finished executing the events it will
         # sleep until the next event or until a new task is provided to it.
@@ -257,7 +264,7 @@ proc ::task::taskman args {
     schedule_next
     # We yield and await either the next scheduled task or to be woken up
     # by injection to modify our values.
-    set args [ yield $coro_response ]
+    set args [yield $coro_response]
     set coro_response [info coroutine]
   }
 }
